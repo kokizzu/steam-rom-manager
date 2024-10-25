@@ -6,8 +6,6 @@ import {
   Renderer2,
   ElementRef,
   RendererStyleFlags2,
-  HostListener,
-  ɵɵsetComponentScope,
 } from "@angular/core";
 import { ActivatedRoute } from "@angular/router";
 import { Subscription, BehaviorSubject } from "rxjs";

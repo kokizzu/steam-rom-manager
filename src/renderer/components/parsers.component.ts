@@ -6,6 +6,9 @@ import {
   OnDestroy,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
+  Renderer2,
+  ElementRef,
+  RendererStyleFlags2,
 } from "@angular/core";
 import { FormGroup, AbstractControl } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
@@ -59,6 +62,7 @@ export class ParsersComponent implements AfterViewInit, OnDestroy {
     activePath: "",
     content: "",
   };
+  showMarkdown: boolean = false;
   configurationIndex: number = -1;
   isUnsaved: boolean = false;
   configPresets: ConfigPresets = {};
@@ -86,6 +90,8 @@ export class ParsersComponent implements AfterViewInit, OnDestroy {
     private settingsService: SettingsService,
     private imageProviderService: ImageProviderService,
     private userExceptionsService: UserExceptionsService,
+    private renderer: Renderer2,
+    private elementRef: ElementRef,
     private router: Router,
     private activatedRoute: ActivatedRoute,
     private changeRef: ChangeDetectorRef,
@@ -203,6 +209,7 @@ export class ParsersComponent implements AfterViewInit, OnDestroy {
                 }),
               ],
               onInfoClick: (self, path) => {
+                this.updateShowMarkdown(true);
                 this.currentDoc.activePath = path.join();
                 this.currentDoc.content =
                   this.lang.docs__md.userAccounts.join("");
@@ -267,6 +274,7 @@ export class ParsersComponent implements AfterViewInit, OnDestroy {
                 const onInfoClick = (self: any, path: string[]) => {
                   this.currentDoc.activePath = path.join();
                   this.currentDoc.content = input.info;
+                  this.updateShowMarkdown(true);
                 };
                 if (["path", "dir", "text"].includes(input.inputType)) {
                   parserInputs[inputFieldName] = new NestedFormElement.Input({
@@ -356,7 +364,7 @@ export class ParsersComponent implements AfterViewInit, OnDestroy {
             //TODO Make Executable required but have the option to set it to None
             shortcutPassthrough: new NestedFormElement.Toggle({
               text: this.lang.text.shortcut_passthrough,
-            }), 
+            }),
             appendArgsToExecutable: new NestedFormElement.Toggle({
               isHidden: () => this.isHiddenIfNotRomsParser(),
               text: this.lang.text.appendArgsToExecutable,
@@ -729,6 +737,25 @@ export class ParsersComponent implements AfterViewInit, OnDestroy {
     return parserInfo;
   }
 
+  updateShowMarkdown(showMarkdown: boolean) {
+    this.showMarkdown = showMarkdown;
+    if (this.showMarkdown) {
+      this.renderer.setStyle(
+        this.elementRef.nativeElement,
+        "--markdown-width",
+        "0.7fr",
+        RendererStyleFlags2.DashCase,
+      );
+    } else {
+      this.renderer.setStyle(
+        this.elementRef.nativeElement,
+        "--markdown-width",
+        "0fr",
+        RendererStyleFlags2.DashCase,
+      );
+    }
+  }
+
   ngAfterViewInit() {
     this.subscriptions.add(
       this.parsersService.getUserConfigurations().subscribe((data) => {
@@ -764,14 +791,18 @@ export class ParsersComponent implements AfterViewInit, OnDestroy {
       }),
     );
     this.subscriptions.add(
-      this.cvService.dataObservable.subscribe((data)=> {
+      this.cvService.dataObservable.subscribe((data) => {
         this.customVariables = data;
-        if(this.nestedGroup) {
-          ((this.nestedGroup.children.titleFromVariable as NestedFormElement.Group)
-            .children.limitToGroups as NestedFormElement.Select).values = Object.keys(this.customVariables)
+        if (this.nestedGroup) {
+          (
+            (
+              this.nestedGroup.children
+                .titleFromVariable as NestedFormElement.Group
+            ).children.limitToGroups as NestedFormElement.Select
+          ).values = Object.keys(this.customVariables);
         }
-      })
-    )
+      }),
+    );
     this.subscriptions.add(
       this.parsersService.getSavedControllerTemplates().subscribe((data) => {
         this.parsersService.controllerTemplates = data;
@@ -875,6 +906,7 @@ export class ParsersComponent implements AfterViewInit, OnDestroy {
   }
 
   presetsInfoClick() {
+    this.updateShowMarkdown(true);
     this.currentDoc.activePath = "";
     this.currentDoc.content = this.lang.docs__md.communityPresets.join("");
   }
@@ -1177,11 +1209,13 @@ export class ParsersComponent implements AfterViewInit, OnDestroy {
                   );
                 }
               }
-              success(this.lang.success.imagePool__i.interpolate({
-                index: i+1,
-                total: totalLength,
-                imagePool: data.files[i].imagePool
-              }));
+              success(
+                this.lang.success.imagePool__i.interpolate({
+                  index: i + 1,
+                  total: totalLength,
+                  imagePool: data.files[i].imagePool,
+                }),
+              );
               if (data.files[i].onlineImageQueries.length) {
                 success(
                   this.lang.success.firstImageQuery__i.interpolate({
@@ -1456,7 +1490,7 @@ export class ParsersComponent implements AfterViewInit, OnDestroy {
       this.userConfigurations !== undefined
     ) {
       this.formChanges.unsubscribe();
-      this.userForm.patchValue({parserInputs: null});
+      this.userForm.patchValue({ parserInputs: null });
       this.userForm.patchValue(this.parsersService.getDefaultValues());
       this.userForm.markAsPristine();
       this.loadedIndex = -1;
